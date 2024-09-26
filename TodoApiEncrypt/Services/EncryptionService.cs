@@ -1,50 +1,39 @@
-﻿using Microsoft.AspNetCore.DataProtection.KeyManagement;
-using Microsoft.AspNetCore.Mvc;
-using System;
-using System.IO;
+﻿using System;
+using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading.Tasks;
+using Newtonsoft.Json;
+using System;
+using System.Security.Cryptography;
+using System.Text;
+using System.Threading.Tasks;
 
-public interface IAESEncryptionService
+public interface IRSAEncryptionService
 {
-    string Encrypt(string plainText, string key);
-    //string Decrypt(string cipherText, string key);
+    Task<string> Encrypt(string textToEncrypt, string publicKey);
 }
 
-public class AESEncryptionService : IAESEncryptionService
+public class RSAEncryptionService : IRSAEncryptionService
 {
-
-
-    [HttpPost("encrypt")]
-    public async Task<IActionResult> Encrypt([FromBody] string plainText, string key)
+    public async Task<string> Encrypt(string textToEncrypt, string publicKeyXml)
     {
-        string key = ""; 
-        IAESEncryptionService encryptionService = new AESEncryptionService();
-        string encryptedText = encryptionService.Encrypt(plainText, key);
-        return Ok(encryptedText);
+        if (string.IsNullOrEmpty(textToEncrypt) || string.IsNullOrEmpty(publicKeyXml))
+        {
+            throw new ArgumentException("Text to encrypt and public key cannot be empty.");
+        }
+
+        using (var rsa = new RSACryptoServiceProvider())
+        {
+            // Import the public key from the XML string
+            rsa.FromXmlString(publicKeyXml);
+
+            // Encrypt the text
+            byte[] encryptedBytes = rsa.Encrypt(Encoding.UTF8.GetBytes(textToEncrypt), RSAEncryptionPadding.Pkcs1);
+
+            // Return the encrypted bytes as a Base64 string
+            return Convert.ToBase64String(encryptedBytes);
+        }
     }
 
-
-    //public string Decrypt(string cipherText, string key)
-    //{
-    //    using (Aes aes = Aes.Create())
-    //    {
-    //        aes.Key = Encoding.UTF8.GetBytes(key);
-    //        aes.IV = new byte[16]; 
-
-    //        using (var decryptor = aes.CreateDecryptor(aes.Key, aes.IV))
-    //        {
-    //            using (var ms = new MemoryStream(Convert.FromBase64String(cipherText)))
-    //            {
-    //                using (var cs = new CryptoStream(ms, decryptor, CryptoStreamMode.Read))
-    //                {
-    //                    using (var sr = new StreamReader(cs))
-    //                    {
-    //                        return sr.ReadToEnd();
-    //                    }
-    //                }
-    //            }
-    //        }
-    //    }
-    //}
 }

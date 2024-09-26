@@ -1,42 +1,44 @@
 using Microsoft.AspNetCore.Mvc;
 
-namespace TodoApiEncrypt.Controllers
+[ApiController]
+[Route("api/todo")]
+public class TodoApiEncryptController : ControllerBase
 {
-    [ApiController]
-    [Route("api/todo")]
-    public class TodoApiEncryptController : ControllerBase
-    {
-        private readonly IAESEncryptionService _aesEncryption;
+    private readonly IRSAEncryptionService _encryptionService;
 
-        public TodoApiEncryptController(IAESEncryptionService aesEncryption)
+    public TodoApiEncryptController(IRSAEncryptionService encryptionService)
+    {
+        _encryptionService = encryptionService;
+    }
+
+    [HttpPost("encrypt")]
+    public async Task<IActionResult> EncryptTodoItem([FromBody] EncryptRequest request)
+    {
+        // Validate the input
+        if (string.IsNullOrEmpty(request.TodoItem) || string.IsNullOrEmpty(request.PublicKey))
         {
-            _aesEncryption = aesEncryption;
+            return BadRequest("To-Do item and public key cannot be empty.");
         }
 
-        [HttpPost("encrypt")]
-        public IActionResult EncryptTodoItem([FromBody] string todoItem)
+        // Encrypt the To-Do item using the provided public key
+        try
         {
-            if (string.IsNullOrEmpty(todoItem))
-            {
-                return BadRequest("To-Do item cannot be empty");
-            }
+            // Call the encryption service to encrypt the Todo item
+            var encryptedItem = await _encryptionService.Encrypt(request.TodoItem, request.PublicKey);
 
-            // Encrypt the items
-            var encryptedItem = _aesEncryption.Encrypt(todoItem);
+            // Return the encrypted item directly without extra fields
             return Ok(encryptedItem);
         }
-
-        //[HttpPost("decrypt")]
-        //public IActionResult DecryptTodoItem([FromBody] string encryptedTodoItem)
-        //{
-        //    if (string.IsNullOrEmpty(encryptedTodoItem))
-        //    {
-        //        return BadRequest("Encrypted To-Do item cannot be empty");
-        //    }
-
-        //    // Decrypt the items
-        //    var decryptedItem = _aesEncryption.Decrypt(encryptedTodoItem);
-        //    return Ok(decryptedItem);
-        //}
+        catch (Exception ex)
+        {
+            // Handle any exceptions that may occur during encryption
+            return StatusCode(500, $"Internal server error: {ex.Message}");
+        }
     }
+}
+
+public class EncryptRequest
+{
+    public string TodoItem { get; set; }
+    public string PublicKey { get; set; }
 }
